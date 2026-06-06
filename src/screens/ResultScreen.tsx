@@ -1,251 +1,155 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../../App';
-import { isScam, getOvercharge } from '../utils/fareCalculator';
+import { colors, radius } from '../theme';
+import Segmented, { type SegmentOption } from '../components/Segmented';
+import ScamAlert from '../components/ScamAlert';
+import { useFareStore } from '../store/useFareStore';
+import { useCurrencyStore } from '../store/useCurrencyStore';
+import { useTripStore } from '../store/useTripStore';
+import { assessFraud, type FraudAssessment } from '../utils/fraudEngine';
+import { SUPPORTED_CURRENCIES, CURRENCY_META, type CurrencyCode } from '../utils/currency';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Result'>;
-type Route = RouteProp<RootStackParamList, 'Result'>;
 
 export default function ResultScreen() {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
-  const { distanceKm, durationMin, estimatedFare } = route.params;
+  const estimate = useFareStore((s) => s.estimate);
+  const { selectedCurrency, setCurrency, rates, isLive } = useCurrencyStore();
 
-  const [askedAmount, setAskedAmount] = useState('');
-  const [result, setResult] = useState<'scam' | 'fair' | null>(null);
-  const [overcharge, setOvercharge] = useState(0);
+  const [asked, setAsked] = useState('');
+  const [assessment, setAssessment] = useState<FraudAssessment | null>(null);
 
   useEffect(() => {
-    if (result === 'scam') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } else if (result === 'fair') {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-  }, [result]);
+    if (!assessment) return;
+    const type =
+      assessment.level === 'CRITICAL'
+        ? Haptics.NotificationFeedbackType.Error
+        : assessment.level === 'WARNING'
+        ? Haptics.NotificationFeedbackType.Warning
+        : Haptics.NotificationFeedbackType.Success;
+    Haptics.notificationAsync(type);
+  }, [assessment]);
 
-  const checkFare = () => {
-    const asked = parseFloat(askedAmount);
-    if (isNaN(asked) || asked <= 0) return;
-    const scam = isScam(estimatedFare, asked);
-    setResult(scam ? 'scam' : 'fair');
-    setOvercharge(getOvercharge(estimatedFare, asked));
+  if (!estimate) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.muted}>No trip data. Please start a trip first.</Text>
+        <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate('Home')}>
+          <Text style={styles.homeText}>Back to Home</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const currencyOptions: SegmentOption[] = SUPPORTED_CURRENCIES.map((c) => ({
+    id: c,
+    label: CURRENCY_META[c].symbol,
+    sublabel: c,
+  }));
+
+  const check = () => {
+    const amount = parseFloat(asked.replace(',', '.'));
+    if (isNaN(amount) || amount <= 0) return;
+    setAssessment(
+      assessFraud({
+        estimate,
+        askedAmount: amount,
+        askedCurrency: selectedCurrency,
+        rates: rates ?? undefined,
+      })
+    );
   };
+
+  const reset = () => {
+    setAsked('');
+    setAssessment(null);
+    useTripStore.getState().reset();
+    navigation.navigate('Home');
+  };
+
+  const symbol = CURRENCY_META[selectedCurrency].symbol;
+  const askedDisplay = `${symbol}${asked || '0'}`;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Text style={styles.title}>Yolculuk Özeti</Text>
-
-      <View style={styles.summaryCard}>
-        <Row label="Mesafe" value={`${distanceKm} km`} />
-        <Row label="Süre" value={`${durationMin} dk`} />
-        <Row label="Tahmini Ücret" value={`₺${estimatedFare}`} highlight />
-      </View>
-
-      {result === null ? (
-        <View style={styles.inputCard}>
-          <Text style={styles.inputLabel}>Taksici ne kadar istedi?</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            placeholder="Örn: 250"
-            placeholderTextColor="#666"
-            value={askedAmount}
-            onChangeText={setAskedAmount}
-            returnKeyType="done"
-            onSubmitEditing={checkFare}
-          />
-          <TouchableOpacity
-            style={[styles.checkButton, !askedAmount && styles.checkButtonDisabled]}
-            onPress={checkFare}
-            disabled={!askedAmount}
-          >
-            <Text style={styles.checkButtonText}>Kontrol Et</Text>
-          </TouchableOpacity>
-        </View>
-      ) : result === 'scam' ? (
-        <View style={[styles.resultCard, styles.scamCard]}>
-          <Text style={styles.alarmIcon}>🚨</Text>
-          <Text style={styles.scamTitle}>DOLANDIRILIYORSUNUZ!</Text>
-          <Text style={styles.scamDetail}>
-            Fazla ücret: ₺{overcharge.toFixed(0)}
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* Yasal taksimetre tahmini */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryLabel}>LEGAL METER ESTIMATE</Text>
+          <Text style={styles.summaryRange}>
+            ₺{Math.round(estimate.min)} – ₺{Math.round(estimate.max)}
           </Text>
-          <Text style={styles.scamAdvice}>
-            Taksimetreyi göstermesini isteyin veya reddedebilirsiniz.
-            Şikayet: 153 (İstanbul Büyükşehir Belediyesi)
-          </Text>
+          {!isLive && <Text style={styles.offline}>⚠️ using offline exchange rates</Text>}
         </View>
-      ) : (
-        <View style={[styles.resultCard, styles.fairCard]}>
-          <Text style={styles.alarmIcon}>✅</Text>
-          <Text style={styles.fairTitle}>Ücret Normal</Text>
-          <Text style={styles.fairDetail}>
-            İstediği tutar tarife ile uyuşuyor.
-          </Text>
-        </View>
-      )}
 
-      <TouchableOpacity
-        style={styles.homeButton}
-        onPress={() => navigation.navigate('Home')}
-      >
-        <Text style={styles.homeButtonText}>Ana Sayfaya Dön</Text>
-      </TouchableOpacity>
+        {assessment === null ? (
+          <View style={styles.inputCard}>
+            <Text style={styles.inputLabel}>How much does the driver ask?</Text>
+
+            <Segmented options={currencyOptions} selectedId={selectedCurrency} onSelect={(c) => setCurrency(c as CurrencyCode)} scroll />
+
+            <View style={styles.amountRow}>
+              <Text style={styles.amountSymbol}>{symbol}</Text>
+              <TextInput
+                style={styles.input}
+                keyboardType="numeric"
+                placeholder="0"
+                placeholderTextColor={colors.textFaint}
+                value={asked}
+                onChangeText={setAsked}
+                returnKeyType="done"
+                onSubmitEditing={check}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.checkBtn, !asked && styles.checkBtnDisabled]}
+              onPress={check}
+              disabled={!asked}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.checkText}>CHECK</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScamAlert assessment={assessment} askedDisplay={askedDisplay} />
+        )}
+
+        <TouchableOpacity style={styles.homeBtn} onPress={reset} activeOpacity={0.85}>
+          <Text style={styles.homeText}>{assessment ? 'New Trip' : 'Cancel'}</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-function Row({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={[styles.rowValue, highlight && styles.rowValueHighlight]}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a2e',
-    padding: 20,
-  },
-  title: {
-    color: '#F5A623',
-    fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  summaryCard: {
-    backgroundColor: '#16213e',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#0f3460',
-  },
-  rowLabel: {
-    color: '#aaa',
-    fontSize: 16,
-  },
-  rowValue: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  rowValueHighlight: {
-    color: '#F5A623',
-    fontSize: 18,
-  },
-  inputCard: {
-    backgroundColor: '#16213e',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  inputLabel: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 12,
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#0f3460',
-    borderRadius: 10,
-    padding: 14,
-    color: '#fff',
-    fontSize: 20,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  checkButton: {
-    backgroundColor: '#F5A623',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  checkButtonDisabled: {
-    backgroundColor: '#444',
-  },
-  checkButtonText: {
-    color: '#1a1a2e',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  resultCard: {
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  scamCard: {
-    backgroundColor: '#4a0000',
-    borderWidth: 2,
-    borderColor: '#e74c3c',
-  },
-  fairCard: {
-    backgroundColor: '#003a1e',
-    borderWidth: 2,
-    borderColor: '#2ecc71',
-  },
-  alarmIcon: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
-  scamTitle: {
-    color: '#e74c3c',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  scamDetail: {
-    color: '#fff',
-    fontSize: 20,
-    marginBottom: 12,
-  },
-  scamAdvice: {
-    color: '#ffb3b3',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  fairTitle: {
-    color: '#2ecc71',
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  fairDetail: {
-    color: '#aaa',
-    fontSize: 16,
-  },
-  homeButton: {
-    backgroundColor: '#16213e',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F5A623',
-  },
-  homeButtonText: {
-    color: '#F5A623',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: 20, paddingBottom: 40 },
+  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  muted: { color: colors.textMuted, fontSize: 16, marginBottom: 20, textAlign: 'center' },
+  summaryCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 20, alignItems: 'center', marginTop: 10, marginBottom: 20 },
+  summaryLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '700', letterSpacing: 1 },
+  summaryRange: { color: colors.accent, fontSize: 38, fontWeight: '900', marginTop: 6 },
+  offline: { color: colors.warning, fontSize: 12, marginTop: 8 },
+  inputCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 20, marginBottom: 20 },
+  inputLabel: { color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
+  amountRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardDeep, borderRadius: radius.md, marginTop: 16, marginBottom: 16, paddingHorizontal: 16 },
+  amountSymbol: { color: colors.text, fontSize: 28, fontWeight: '800', marginRight: 8 },
+  input: { flex: 1, color: colors.text, fontSize: 32, fontWeight: '800', paddingVertical: 14 },
+  checkBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 18, alignItems: 'center' },
+  checkBtnDisabled: { backgroundColor: colors.textFaint },
+  checkText: { color: colors.bg, fontSize: 20, fontWeight: '900', letterSpacing: 1 },
+  homeBtn: { borderRadius: radius.md, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.accent },
+  homeText: { color: colors.accent, fontSize: 16, fontWeight: '700' },
 });

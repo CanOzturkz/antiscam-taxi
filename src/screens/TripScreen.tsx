@@ -1,202 +1,144 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, Alert,
-} from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import * as Location from 'expo-location';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../../App';
-import { estimateFare } from '../utils/fareCalculator';
+import { colors, radius } from '../theme';
+import { useTripStore } from '../store/useTripStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { useFareStore } from '../store/useFareStore';
+import { estimateFareRange } from '../utils/fareCalculator';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Trip'>;
-type Route = RouteProp<RootStackParamList, 'Trip'>;
-
-function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 export default function TripScreen() {
   const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
-  const { startLat, startLon } = route.params;
+  const { cityId, taxiTypeId } = useSettingsStore();
 
-  const [distanceKm, setDistanceKm] = useState(0);
-  const [elapsedMin, setElapsedMin] = useState(0);
-  const [currentEstimate, setCurrentEstimate] = useState(0);
+  const distanceKm = useTripStore((s) => s.distanceKm);
+  const durationSec = useTripStore((s) => s.durationSec);
+  const waitingSec = useTripStore((s) => s.waitingSec);
+  const currentSpeed = useTripStore((s) => s.currentSpeed);
 
-  const lastPos = useRef({ lat: startLat, lon: startLon });
-  const startTime = useRef(Date.now());
   const watchRef = useRef<Location.LocationSubscription | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       watchRef.current = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.High, distanceInterval: 10 },
+        { accuracy: Location.Accuracy.High, distanceInterval: 5, timeInterval: 2000 },
         (loc) => {
-          const { latitude, longitude } = loc.coords;
-          const added = getDistanceKm(
-            lastPos.current.lat,
-            lastPos.current.lon,
-            latitude,
-            longitude
+          if (!mounted) return;
+          useTripStore.getState().onPosition(
+            loc.coords.latitude,
+            loc.coords.longitude,
+            loc.coords.speed ?? null
           );
-          lastPos.current = { lat: latitude, lon: longitude };
-          setDistanceKm((prev) => {
-            const next = prev + added;
-            return next;
-          });
         }
       );
     })();
 
     timerRef.current = setInterval(() => {
-      const mins = (Date.now() - startTime.current) / 60000;
-      setElapsedMin(mins);
-    }, 10000);
+      useTripStore.getState().onTick(1);
+    }, 1000);
 
     return () => {
+      mounted = false;
       watchRef.current?.remove();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  useEffect(() => {
-    setCurrentEstimate(estimateFare(distanceKm, elapsedMin));
-  }, [distanceKm, elapsedMin]);
+  const durationMin = durationSec / 60;
+  const waitingMin = waitingSec / 60;
+
+  const estimate = useMemo(
+    () => estimateFareRange({ distanceKm, durationMin, waitingMin, cityId, taxiTypeId }),
+    [distanceKm, durationMin, waitingMin, cityId, taxiTypeId]
+  );
+
+  const moving = currentSpeed >= 2.5;
 
   const endTrip = () => {
-    Alert.alert(
-      'Yolculuğu Bitir',
-      'Varış noktasına ulaştınız mı?',
-      [
-        { text: 'Hayır', style: 'cancel' },
-        {
-          text: 'Evet',
-          onPress: () => {
-            watchRef.current?.remove();
-            if (timerRef.current) clearInterval(timerRef.current);
-            navigation.navigate('Result', {
-              distanceKm: parseFloat(distanceKm.toFixed(2)),
-              durationMin: parseFloat(elapsedMin.toFixed(1)),
-              estimatedFare: parseFloat(currentEstimate.toFixed(0)),
-            });
-          },
+    Alert.alert('End trip', 'Have you arrived at your destination?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes',
+        onPress: () => {
+          watchRef.current?.remove();
+          if (timerRef.current) clearInterval(timerRef.current);
+          useTripStore.getState().stop();
+          useFareStore.getState().setEstimate(estimate);
+          navigation.navigate('Result');
         },
-      ]
-    );
-  };
-
-  const formatTime = (min: number) => {
-    const m = Math.floor(min);
-    const s = Math.floor((min - m) * 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
+      },
+    ]);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Yolculuk Devam Ediyor</Text>
+      <View style={styles.statusRow}>
+        <View style={[styles.dot, { backgroundColor: moving ? colors.safe : colors.warning }]} />
+        <Text style={styles.statusText}>{moving ? 'Moving' : 'Stopped / traffic'}</Text>
+      </View>
 
       <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{distanceKm.toFixed(2)}</Text>
-          <Text style={styles.statLabel}>km</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{formatTime(elapsedMin)}</Text>
-          <Text style={styles.statLabel}>süre</Text>
-        </View>
+        <Stat value={distanceKm.toFixed(2)} unit="km" />
+        <Stat value={formatTime(durationSec)} unit="time" />
       </View>
 
-      <View style={styles.estimateCard}>
-        <Text style={styles.estimateLabel}>Tahmini Ücret</Text>
-        <Text style={styles.estimateValue}>₺{currentEstimate.toFixed(0)}</Text>
-        <Text style={styles.estimateNote}>İstanbul tarifesine göre</Text>
+      <View style={styles.fareCard}>
+        <Text style={styles.fareLabel}>ESTIMATED FARE</Text>
+        <Text style={styles.fareRange}>
+          ₺{Math.round(estimate.min)} – ₺{Math.round(estimate.max)}
+        </Text>
+        <Text style={styles.fareNote}>based on the live taxi meter tariff</Text>
+        {waitingMin > 0.2 && (
+          <Text style={styles.waitNote}>incl. {Math.round(waitingMin)} min in traffic</Text>
+        )}
       </View>
 
-      <TouchableOpacity style={styles.endButton} onPress={endTrip}>
-        <Text style={styles.endButtonText}>Yolculuğu Bitir</Text>
+      <TouchableOpacity style={styles.endBtn} onPress={endTrip} activeOpacity={0.85}>
+        <Text style={styles.endText}>■  END TRIP</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
+function Stat({ value, unit }: { value: string; unit: string }) {
+  return (
+    <View style={styles.statCard}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statUnit}>{unit}</Text>
+    </View>
+  );
+}
+
+function formatTime(totalSec: number): string {
+  const m = Math.floor(totalSec / 60);
+  const s = Math.floor(totalSec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a2e',
-    padding: 20,
-    alignItems: 'center',
+  container: { flex: 1, backgroundColor: colors.bg, padding: 20, alignItems: 'center' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 24, marginBottom: 24 },
+  dot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
+  statusText: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
+  statsGrid: { flexDirection: 'row', gap: 14, marginBottom: 24 },
+  statCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 24, alignItems: 'center', flex: 1 },
+  statValue: { color: colors.text, fontSize: 34, fontWeight: '900' },
+  statUnit: { color: colors.textMuted, fontSize: 14, marginTop: 4 },
+  fareCard: {
+    backgroundColor: colors.cardDeep, borderRadius: radius.xl, padding: 30,
+    alignItems: 'center', width: '100%', marginBottom: 40,
   },
-  title: {
-    color: '#F5A623',
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginTop: 30,
-    marginBottom: 30,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 16,
-    marginBottom: 24,
-  },
-  statCard: {
-    backgroundColor: '#16213e',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    color: '#fff',
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  statLabel: {
-    color: '#aaa',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  estimateCard: {
-    backgroundColor: '#0f3460',
-    borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 40,
-  },
-  estimateLabel: {
-    color: '#aaa',
-    fontSize: 16,
-  },
-  estimateValue: {
-    color: '#F5A623',
-    fontSize: 56,
-    fontWeight: 'bold',
-    marginVertical: 8,
-  },
-  estimateNote: {
-    color: '#666',
-    fontSize: 13,
-  },
-  endButton: {
-    backgroundColor: '#e74c3c',
-    borderRadius: 16,
-    paddingVertical: 18,
-    paddingHorizontal: 50,
-  },
-  endButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
+  fareLabel: { color: colors.textMuted, fontSize: 14, fontWeight: '700', letterSpacing: 1 },
+  fareRange: { color: colors.accent, fontSize: 46, fontWeight: '900', marginVertical: 10, textAlign: 'center' },
+  fareNote: { color: colors.textFaint, fontSize: 13 },
+  waitNote: { color: colors.warning, fontSize: 13, marginTop: 6 },
+  endBtn: { backgroundColor: colors.critical, borderRadius: radius.lg, paddingVertical: 20, paddingHorizontal: 60 },
+  endText: { color: colors.text, fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
 });

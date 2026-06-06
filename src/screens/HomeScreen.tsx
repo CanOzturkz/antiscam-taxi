@@ -1,184 +1,115 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity,
-  Alert, ActivityIndicator, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+import { colors, radius } from '../theme';
+import Segmented, { type SegmentOption } from '../components/Segmented';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { useCurrencyStore } from '../store/useCurrencyStore';
+import { useTripStore } from '../store/useTripStore';
+import { listCities, listTaxiTypes, getTaxiType } from '../config/tariffConfig';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
-  const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [destination, setDestination] = useState('');
+  const { cityId, taxiTypeId, setCity, setTaxiType } = useSettingsStore();
+  const refreshRates = useCurrencyStore((s) => s.refresh);
 
+  const [starting, setStarting] = useState(false);
+
+  // Uygulama açılır açılmaz canlı döviz kurlarını çek
   useEffect(() => {
-    (async () => {
+    refreshRates();
+  }, [refreshRates]);
+
+  const cities = listCities();
+  const cityOptions: SegmentOption[] = cities.map((c) => ({ id: c.id, label: c.name }));
+
+  const taxiOptions: SegmentOption[] = listTaxiTypes(cityId).map((t) => {
+    const tt = getTaxiType(cityId, t.id);
+    return { id: t.id, label: t.label.replace(' Taksi', ''), sublabel: `₺${tt.opening} + ₺${tt.perKm}/km` };
+  });
+
+  const startTrip = async () => {
+    setStarting(true);
+    try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Konum İzni', 'Uygulama konum erişimine ihtiyaç duyuyor.');
-        setLoading(false);
+        Alert.alert('Location needed', 'TaxiGuard needs your location to track the route.');
         return;
       }
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation(loc);
-      setLoading(false);
-    })();
-  }, []);
-
-  const startTrip = () => {
-    if (!location) {
-      Alert.alert('Hata', 'Konum alınamadı.');
-      return;
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      useTripStore.getState().start(loc.coords.latitude, loc.coords.longitude);
+      navigation.navigate('Trip');
+    } catch {
+      Alert.alert('Error', 'Could not get your location. Please try again.');
+    } finally {
+      setStarting(false);
     }
-    navigation.navigate('Trip', {
-      startLat: location.coords.latitude,
-      startLon: location.coords.longitude,
-      destination,
-    });
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#F5A623" />
-        <Text style={styles.loadingText}>Konum alınıyor...</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>TaksiGüvenli</Text>
-        <Text style={styles.subtitle}>İstanbul'da güvenli seyahat et</Text>
-      </View>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.brand}>🛡️ TaxiGuard</Text>
+      <Text style={styles.subtitle}>Don't get scammed by taxis</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Nereye gidiyorsunuz?</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Örn: Taksim Meydanı"
-          placeholderTextColor="#999"
-          value={destination}
-          onChangeText={setDestination}
-        />
+      {cityOptions.length > 1 && (
+        <>
+          <Text style={styles.sectionLabel}>CITY</Text>
+          <Segmented options={cityOptions} selectedId={cityId} onSelect={setCity} scroll />
+        </>
+      )}
 
-        {location && (
-          <Text style={styles.locationText}>
-            📍 Konumunuz alındı
-          </Text>
+      <Text style={styles.sectionLabel}>TAXI TYPE</Text>
+      <Segmented options={taxiOptions} selectedId={taxiTypeId} onSelect={setTaxiType} scroll />
+
+      <TouchableOpacity
+        style={[styles.startBtn, starting && styles.startBtnDisabled]}
+        onPress={startTrip}
+        disabled={starting}
+        activeOpacity={0.85}
+      >
+        {starting ? (
+          <ActivityIndicator color={colors.bg} />
+        ) : (
+          <Text style={styles.startText}>▶  START TRIP</Text>
         )}
-
-        <TouchableOpacity
-          style={[styles.button, !location && styles.buttonDisabled]}
-          onPress={startTrip}
-          disabled={!location}
-        >
-          <Text style={styles.buttonText}>Yolculuğu Başlat</Text>
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.infoBox}>
-        <Text style={styles.infoTitle}>Nasıl çalışır?</Text>
-        <Text style={styles.infoText}>1. Yolculuğu başlat — GPS rotayı takip eder</Text>
-        <Text style={styles.infoText}>2. Varışta taksicinin istediği tutarı gir</Text>
-        <Text style={styles.infoText}>3. Dolandırılıyorsan alarm verir</Text>
+        <Text style={styles.infoTitle}>How it works</Text>
+        <Text style={styles.infoText}>1.  Start the trip — GPS tracks your route</Text>
+        <Text style={styles.infoText}>2.  At arrival, enter the price the driver asks</Text>
+        <Text style={styles.infoText}>3.  We warn you instantly if it's a scam</Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1a1a2e',
-    padding: 20,
+  container: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: 20, paddingBottom: 40 },
+  brand: { fontSize: 34, fontWeight: '900', color: colors.accent, textAlign: 'center', marginTop: 16 },
+  subtitle: { fontSize: 16, color: colors.textMuted, textAlign: 'center', marginTop: 4, marginBottom: 24 },
+  sectionLabel: {
+    color: colors.textMuted, fontSize: 13, fontWeight: '700', letterSpacing: 1,
+    marginTop: 22, marginBottom: 10,
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
+  startBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.lg,
+    paddingVertical: 22,
     alignItems: 'center',
-    backgroundColor: '#1a1a2e',
+    marginTop: 30,
   },
-  loadingText: {
-    color: '#fff',
-    marginTop: 12,
-    fontSize: 16,
-  },
-  header: {
-    marginTop: 20,
-    marginBottom: 30,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#F5A623',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#aaa',
-    marginTop: 6,
-  },
-  card: {
-    backgroundColor: '#16213e',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-  },
-  label: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 10,
-    fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#0f3460',
-    borderRadius: 10,
-    padding: 14,
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  locationText: {
-    color: '#4CAF50',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: '#F5A623',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    backgroundColor: '#555',
-  },
-  buttonText: {
-    color: '#1a1a2e',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  infoBox: {
-    backgroundColor: '#16213e',
-    borderRadius: 16,
-    padding: 18,
-  },
-  infoTitle: {
-    color: '#F5A623',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  infoText: {
-    color: '#bbb',
-    fontSize: 14,
-    marginBottom: 6,
-    lineHeight: 20,
-  },
+  startBtnDisabled: { opacity: 0.6 },
+  startText: { color: colors.bg, fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
+  infoBox: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 18, marginTop: 28 },
+  infoTitle: { color: colors.accent, fontSize: 16, fontWeight: '700', marginBottom: 10 },
+  infoText: { color: colors.textMuted, fontSize: 15, marginBottom: 8, lineHeight: 21 },
 });

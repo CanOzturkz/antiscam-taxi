@@ -5,11 +5,12 @@ import { StatusBar } from 'expo-status-bar';
 import HomeScreen from './src/screens/HomeScreen';
 import TripScreen from './src/screens/TripScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import { colors } from './src/theme';
 
 export type RootStackParamList = {
   Home: undefined;
-  Trip: { startLat: number; startLon: number; destination: string };
-  Result: { distanceKm: number; durationMin: number; estimatedFare: number };
+  Trip: undefined;
+  Result: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -21,14 +22,15 @@ export default function App() {
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
-          headerStyle: { backgroundColor: '#16213e' },
-          headerTintColor: '#F5A623',
+          headerStyle: { backgroundColor: colors.card },
+          headerTintColor: colors.accent,
           headerTitleStyle: { fontWeight: 'bold' },
+          contentStyle: { backgroundColor: colors.bg },
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'TaksiGüvenli' }} />
-        <Stack.Screen name="Trip" component={TripScreen} options={{ title: 'Yolculuk', headerBackVisible: false }} />
-        <Stack.Screen name="Result" component={ResultScreen} options={{ title: 'Sonuç', headerBackVisible: false }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'TaxiGuard' }} />
+        <Stack.Screen name="Trip" component={TripScreen} options={{ title: 'Trip', headerBackVisible: false }} />
+        <Stack.Screen name="Result" component={ResultScreen} options={{ title: 'Result', headerBackVisible: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
