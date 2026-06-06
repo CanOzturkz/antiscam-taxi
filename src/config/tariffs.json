@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "tariffVersion": "2026-02-16",
+  "source": "İBB UKOME - 16 Şubat 2026 tarifesi",
+  "lastVerified": "2026-06-07",
+  "defaultCity": "istanbul",
+  "remoteConfigUrl": "",
+  "cities": {
+    "istanbul": {
+      "name": "İstanbul",
+      "country": "TR",
+      "currency": "TRY",
+      "singleTariff": true,
+      "note": "İstanbul'da 7/24 tek tarife uygulanır, gece/gündüz farkı yoktur.",
+      "defaultTaxiType": "sari",
+      "taxiTypes": {
+        "sari": {
+          "label": "Sarı Taksi",
+          "labelEn": "Yellow Taxi",
+          "opening": 65.40,
+          "perKm": 43.56,
+          "perMinuteWaiting": 9.07,
+          "minimumFare": 210
+        },
+        "turkuaz": {
+          "label": "Turkuaz Taksi",
+          "labelEn": "Turquoise Taxi",
+          "opening": 75.21,
+          "perKm": 50.09,
+          "perMinuteWaiting": 9.07,
+          "minimumFare": 210
+        },
+        "siyah": {
+          "label": "Siyah (Lüks) Taksi",
+          "labelEn": "Black (Premium) Taxi",
+          "opening": 111.18,
+          "perKm": 74.05,
+          "perMinuteWaiting": 9.07,
+          "minimumFare": 210
+        }
+      },
+      "tolls": [
+        { "id": "fsm", "label": "FSM Köprüsü", "fee": 0, "note": "Otoyol geçiş ücreti rotaya göre eklenir" },
+        { "id": "ykk", "label": "Yavuz Sultan Selim Köprüsü", "fee": 0 },
+        { "id": "avrasya", "label": "Avrasya Tüneli", "fee": 0 },
+        { "id": "osmangazi", "label": "Osmangazi Köprüsü", "fee": 0 }
+      ]
+    },
+    "ankara": {
+      "name": "Ankara",
+      "country": "TR",
+      "currency": "TRY",
+      "singleTariff": true,
+      "note": "DEĞERLER DOĞRULANMALI - UKOME Ankara tarifesi ile güncellenecek",
+      "defaultTaxiType": "standart",
+      "taxiTypes": {
+        "standart": {
+          "label": "Standart Taksi",
+          "labelEn": "Standard Taxi",
+          "opening": 40.0,
+          "perKm": 32.0,
+          "perMinuteWaiting": 6.0,
+          "minimumFare": 120
+        }
+      },
+      "tolls": []
+    },
+    "izmir": {
+      "name": "İzmir",
+      "country": "TR",
+      "currency": "TRY",
+      "singleTariff": true,
+      "note": "DEĞERLER DOĞRULANMALI - UKOME İzmir tarifesi ile güncellenecek",
+      "defaultTaxiType": "standart",
+      "taxiTypes": {
+        "standart": {
+          "label": "Standart Taksi",
+          "labelEn": "Standard Taxi",
+          "opening": 38.0,
+          "perKm": 30.0,
+          "perMinuteWaiting": 6.0,
+          "minimumFare": 110
+        }
+      },
+      "tolls": []
+    }
+  }
+}
