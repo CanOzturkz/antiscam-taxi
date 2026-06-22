@@ -14,6 +14,8 @@ import { useTripStore } from '../store/useTripStore';
 import { listCities, listTaxiTypes, getTaxiType } from '../config/tariffConfig';
 import { hasApiKey, getRoute, type RouteResult } from '../services/googleDirections';
 import { estimateFareRange, type FareEstimate } from '../utils/fareCalculator';
+import RouteMap from '../components/RouteMap';
+import { decodePolyline } from '../utils/polyline';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
@@ -173,6 +175,12 @@ export default function HomeScreen() {
           {preRoute.estimatedWaitingMin > 1 && (
             <Text style={styles.preTraffic}>🚦 +{Math.round(preRoute.estimatedWaitingMin)} min traffic delay included</Text>
           )}
+          <RouteMap
+            origin={{ latitude: preRoute.startLocation.lat, longitude: preRoute.startLocation.lng }}
+            destination={{ latitude: preRoute.endLocation.lat, longitude: preRoute.endLocation.lng }}
+            routePoints={preRoute.polyline ? decodePolyline(preRoute.polyline) : []}
+            height={200}
+          />
         </View>
       )}
 
