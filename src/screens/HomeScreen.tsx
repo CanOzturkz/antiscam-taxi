@@ -75,8 +75,17 @@ export default function HomeScreen() {
         taxiTypeId,
       });
 
+      // Yola çıkmadan tahminde belirsizlik payı: gerçek rota/mesafe/trafik
+      // Google'ın tahmininden sapabilir. Mantıklı bir Min-Max bandı göster.
+      const point = estimate.point;
+      const banded = {
+        ...estimate,
+        min: Math.round(point * 0.95),
+        max: Math.round(point * 1.15),
+      };
+
       setPreRoute(route);
-      setPreEstimate(estimate);
+      setPreEstimate(banded);
     } catch (e: any) {
       const code = e?.message;
       const msg = code === 'NO_API_KEY'
