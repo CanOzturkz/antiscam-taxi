@@ -12,7 +12,7 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { useCurrencyStore } from '../store/useCurrencyStore';
 import { useTripStore } from '../store/useTripStore';
 import { listCities, listTaxiTypes, getTaxiType } from '../config/tariffConfig';
-import { hasApiKey, geocode, getRoute, type RouteResult } from '../services/googleDirections';
+import { hasApiKey, getRoute, type RouteResult } from '../services/googleDirections';
 import { estimateFareRange, type FareEstimate } from '../utils/fareCalculator';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
@@ -61,15 +61,10 @@ export default function HomeScreen() {
       const coords = await getCurrentCoords();
       if (!coords) return;
 
-      const dest = await geocode(destination.trim());
-      if (!dest) {
-        Alert.alert('Not found', 'Could not find that destination. Try a more specific address.');
-        return;
-      }
-
+      // Directions hedefi düz metin adres olarak kabul eder (Geocoding API gerekmez)
       const route = await getRoute(
         `${coords.latitude},${coords.longitude}`,
-        `${dest.lat},${dest.lng}`
+        destination.trim()
       );
 
       const estimate = estimateFareRange({
@@ -83,8 +78,11 @@ export default function HomeScreen() {
       setPreRoute(route);
       setPreEstimate(estimate);
     } catch (e: any) {
-      const msg = e?.message === 'NO_API_KEY'
+      const code = e?.message;
+      const msg = code === 'NO_API_KEY'
         ? 'Google Maps API key is not set yet.'
+        : code === 'NOT_FOUND' || code === 'ZERO_RESULTS'
+        ? 'Could not find that destination. Try a more specific address.'
         : 'Could not calculate the route. Check your connection and try again.';
       Alert.alert('Estimate failed', msg);
     } finally {

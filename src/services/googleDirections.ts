@@ -32,6 +32,11 @@ export interface RouteResult {
   estimatedWaitingMin: number;
   startAddress: string;
   endAddress: string;
+  /** Başlangıç/varış koordinatları (haritada işaretlemek için) */
+  startLocation: LatLng;
+  endLocation: LatLng;
+  /** Rota çizgisi için encoded polyline (haritada çizmek için) */
+  polyline: string;
 }
 
 export class DirectionsError extends Error {}
@@ -68,7 +73,8 @@ export async function getRoute(
     throw new DirectionsError(data.status || 'NO_ROUTE');
   }
 
-  const leg = data.routes[0].legs[0];
+  const route = data.routes[0];
+  const leg = route.legs[0];
   const distanceKm = leg.distance.value / 1000;
   const durationMin = leg.duration.value / 60;
   const durationInTrafficMin = (leg.duration_in_traffic?.value ?? leg.duration.value) / 60;
@@ -81,6 +87,9 @@ export async function getRoute(
     estimatedWaitingMin,
     startAddress: leg.start_address,
     endAddress: leg.end_address,
+    startLocation: { lat: leg.start_location.lat, lng: leg.start_location.lng },
+    endLocation: { lat: leg.end_location.lat, lng: leg.end_location.lng },
+    polyline: route.overview_polyline?.points ?? '',
   };
 }
 
