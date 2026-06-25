@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { colors, radius } from '../theme';
+import { colors, radius, space, type, elevation } from '../theme';
 import { useTripStore } from '../store/useTripStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useFareStore } from '../store/useFareStore';
@@ -14,6 +15,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'Trip'>;
 
 export default function TripScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { cityId, taxiTypeId } = useSettingsStore();
 
   const distanceKm = useTripStore((s) => s.distanceKm);
@@ -78,8 +80,8 @@ export default function TripScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.statusRow}>
+    <View style={[styles.container, { paddingBottom: insets.bottom + space.xl }]}>
+      <View style={styles.statusPill}>
         <View style={[styles.dot, { backgroundColor: moving ? colors.safe : colors.warning }]} />
         <Text style={styles.statusText}>{moving ? 'Moving' : 'Stopped / traffic'}</Text>
       </View>
@@ -123,22 +125,63 @@ function formatTime(totalSec: number): string {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: 20, alignItems: 'center' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 24, marginBottom: 24 },
-  dot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
-  statusText: { color: colors.textMuted, fontSize: 16, fontWeight: '600' },
-  statsGrid: { flexDirection: 'row', gap: 14, marginBottom: 24 },
-  statCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 24, alignItems: 'center', flex: 1 },
-  statValue: { color: colors.text, fontSize: 34, fontWeight: '900' },
-  statUnit: { color: colors.textMuted, fontSize: 14, marginTop: 4 },
-  fareCard: {
-    backgroundColor: colors.cardDeep, borderRadius: radius.xl, padding: 30,
-    alignItems: 'center', width: '100%', marginBottom: 40,
+  container: { flex: 1, backgroundColor: colors.bg, padding: space.xl, alignItems: 'center' },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm + 2,
+    marginTop: space.xxl,
+    marginBottom: space.xxl,
   },
-  fareLabel: { color: colors.textMuted, fontSize: 14, fontWeight: '700', letterSpacing: 1 },
-  fareRange: { color: colors.accent, fontSize: 46, fontWeight: '900', marginVertical: 10, textAlign: 'center' },
-  fareNote: { color: colors.textFaint, fontSize: 13 },
-  waitNote: { color: colors.warning, fontSize: 13, marginTop: 6 },
-  endBtn: { backgroundColor: colors.critical, borderRadius: radius.lg, paddingVertical: 20, paddingHorizontal: 60 },
-  endText: { color: colors.text, fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
+  dot: { width: 12, height: 12, borderRadius: 6, marginRight: space.sm },
+  statusText: { ...type.body, color: colors.text, fontWeight: '700' },
+  statsGrid: { flexDirection: 'row', gap: space.lg, marginBottom: space.xxl, width: '100%' },
+  statCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: space.xxl - 4,
+    alignItems: 'center',
+    flex: 1,
+    ...elevation.card,
+  },
+  statValue: { ...type.numericM, color: colors.text },
+  statUnit: { ...type.caption, color: colors.textMuted, marginTop: space.xs },
+  fareCard: {
+    backgroundColor: colors.surfaceDeep,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    padding: space.xxl,
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: space.xxxl,
+    ...elevation.raised,
+  },
+  fareLabel: { ...type.sectionLabel, color: colors.textMuted, textTransform: 'uppercase' },
+  fareRange: { ...type.numericXL, color: colors.accent, marginVertical: space.sm + 2, textAlign: 'center' },
+  fareNote: { ...type.caption, color: colors.textFaint },
+  waitNote: { ...type.caption, color: colors.warning, marginTop: space.xs + 2 },
+  endBtn: {
+    backgroundColor: colors.critical,
+    borderRadius: radius.lg,
+    paddingVertical: space.xl,
+    paddingHorizontal: space.xxxl + space.xl,
+    minHeight: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.critical,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
+  endText: { ...type.button, color: colors.text, fontSize: 20 },
 });

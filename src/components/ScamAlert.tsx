@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { colors, radius } from '../theme';
+import { colors, radius, space, type, elevation } from '../theme';
 import type { FraudAssessment } from '../utils/fraudEngine';
 import { OFFICIAL_CONTACTS } from '../utils/fraudEngine';
 
@@ -11,9 +11,9 @@ interface Props {
 }
 
 const LEVEL_STYLE = {
-  SAFE: { icon: '✅', title: 'FAIR PRICE', color: colors.safe, bg: colors.safeBg },
-  WARNING: { icon: '⚠️', title: 'POSSIBLE OVERCHARGE', color: colors.warning, bg: colors.warningBg },
-  CRITICAL: { icon: '🚨', title: 'SCAM ALERT', color: colors.critical, bg: colors.criticalBg },
+  SAFE: { icon: '✅', title: 'FAIR PRICE', color: colors.safe, bg: colors.safeBg, border: colors.safeBorder },
+  WARNING: { icon: '⚠️', title: 'POSSIBLE OVERCHARGE', color: colors.warning, bg: colors.warningBg, border: colors.warningBorder },
+  CRITICAL: { icon: '🚨', title: 'SCAM ALERT', color: colors.critical, bg: colors.criticalBg, border: colors.criticalBorder },
 } as const;
 
 function call(number: string) {
@@ -26,8 +26,12 @@ export default function ScamAlert({ assessment, askedDisplay }: Props) {
   const showActions = assessment.level !== 'SAFE';
 
   return (
-    <View style={[styles.card, { backgroundColor: s.bg, borderColor: s.color }]}>
-      <Text style={styles.icon}>{s.icon}</Text>
+    <View style={[styles.card, { backgroundColor: s.bg, borderColor: s.border }]}>
+      <View style={[styles.rail, { backgroundColor: s.color }]} />
+
+      <View style={[styles.iconChip, { backgroundColor: colors.scrim, borderColor: s.color }]}>
+        <Text style={styles.icon}>{s.icon}</Text>
+      </View>
       <Text style={[styles.title, { color: s.color }]}>{s.title}</Text>
 
       {/* Büyük, net karşılaştırma */}
@@ -37,10 +41,10 @@ export default function ScamAlert({ assessment, askedDisplay }: Props) {
           <Text style={[styles.compareValue, { color: s.color }]}>{askedDisplay}</Text>
           <Text style={styles.compareSub}>≈ ₺{Math.round(assessment.askedTRY)}</Text>
         </View>
-        <Text style={styles.vs}>vs</Text>
+        <View style={styles.divider} />
         <View style={styles.compareCol}>
           <Text style={styles.compareLabel}>METER MAX</Text>
-          <Text style={styles.compareValue}>₺{Math.round(estimate.max)}</Text>
+          <Text style={[styles.compareValue, styles.compareValueMeter]}>₺{Math.round(estimate.max)}</Text>
           <Text style={styles.compareSub}>legal limit</Text>
         </View>
       </View>
@@ -117,49 +121,71 @@ function ActionButton({
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.xl,
-    padding: 22,
+    padding: space.xxl,
+    paddingTop: space.xxl + 6,
     alignItems: 'center',
     borderWidth: 2,
-    marginBottom: 20,
+    marginBottom: space.xl,
+    overflow: 'hidden',
+    ...elevation.raised,
   },
-  icon: { fontSize: 56, marginBottom: 4 },
-  title: { fontSize: 30, fontWeight: '900', letterSpacing: 1, marginBottom: 18, textAlign: 'center' },
+  rail: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+  },
+  iconChip: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: space.md,
+  },
+  icon: { fontSize: 48, textAlign: 'center' },
+  title: { ...type.title, fontSize: 28, fontWeight: '900', letterSpacing: 1, marginBottom: space.lg, textAlign: 'center' },
   compareRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    marginBottom: 16,
+    marginBottom: space.lg,
   },
   compareCol: { flex: 1, alignItems: 'center' },
-  compareLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
-  compareValue: { color: colors.text, fontSize: 32, fontWeight: '900', marginVertical: 2 },
-  compareSub: { color: colors.textFaint, fontSize: 13 },
-  vs: { color: colors.textFaint, fontSize: 16, fontWeight: '700', marginHorizontal: 8 },
-  safeMsg: { color: colors.text, fontSize: 17, textAlign: 'center', lineHeight: 24, marginTop: 4 },
+  compareLabel: { ...type.sectionLabel, color: colors.textMuted, textTransform: 'uppercase' },
+  compareValue: { ...type.numericM, marginVertical: space.xs },
+  compareValueMeter: { color: colors.text },
+  compareSub: { ...type.caption, color: colors.textFaint },
+  divider: { width: 1, alignSelf: 'stretch', backgroundColor: colors.border, marginHorizontal: space.sm },
+  safeMsg: { ...type.bodyStrong, color: colors.text, textAlign: 'center', lineHeight: 24, marginTop: space.xs },
   overchargeBox: {
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    paddingVertical: space.md,
+    paddingHorizontal: space.xl,
+    backgroundColor: colors.scrim,
     borderRadius: radius.lg,
-    marginBottom: 16,
+    marginBottom: space.lg,
     width: '100%',
   },
-  overchargeLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '700', letterSpacing: 1 },
-  overchargeValue: { fontSize: 40, fontWeight: '900', marginVertical: 2 },
-  overchargePct: { color: colors.text, fontSize: 15 },
-  advice: { color: colors.text, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 16 },
-  actions: { flexDirection: 'row', gap: 10, width: '100%', marginBottom: 10 },
+  overchargeLabel: { ...type.sectionLabel, color: colors.textMuted, textTransform: 'uppercase' },
+  overchargeValue: { ...type.numericL, marginVertical: space.xs },
+  overchargePct: { ...type.caption, color: colors.text },
+  advice: { ...type.body, color: colors.text, textAlign: 'center', lineHeight: 22, marginBottom: space.lg },
+  actions: { flexDirection: 'row', gap: space.sm + 2, width: '100%', marginBottom: space.sm + 2 },
   actionBtn: {
     flex: 1,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderRadius: radius.md,
-    paddingVertical: 14,
+    paddingVertical: space.md,
+    minHeight: 56,
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    justifyContent: 'center',
+    backgroundColor: colors.scrim,
   },
-  actionBtnFull: { width: '100%' },
-  actionLabel: { fontSize: 17, fontWeight: '800' },
-  actionSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  actionBtnFull: { width: '100%', flex: undefined },
+  actionLabel: { ...type.bodyStrong },
+  actionSub: { ...type.caption, color: colors.textMuted, marginTop: 2 },
 });

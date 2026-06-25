@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { colors, radius } from '../theme';
+import { colors, radius, space, type } from '../theme';
 
 export interface SegmentOption {
   id: string;
@@ -18,15 +18,16 @@ interface Props {
 export default function Segmented({ options, selectedId, onSelect, scroll }: Props) {
   const content = options.map((opt) => {
     const active = opt.id === selectedId;
+    const hasSub = !!opt.sublabel;
     return (
       <TouchableOpacity
         key={opt.id}
-        style={[styles.item, active && styles.itemActive]}
+        style={[styles.item, hasSub ? styles.itemBox : styles.itemPill, active && styles.itemActive]}
         onPress={() => onSelect(opt.id)}
         activeOpacity={0.8}
       >
         <Text style={[styles.label, active && styles.labelActive]}>{opt.label}</Text>
-        {opt.sublabel ? (
+        {hasSub ? (
           <Text style={[styles.sublabel, active && styles.sublabelActive]}>{opt.sublabel}</Text>
         ) : null}
       </TouchableOpacity>
@@ -46,34 +47,41 @@ export default function Segmented({ options, selectedId, onSelect, scroll }: Pro
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
-    gap: 10,
+    gap: space.sm + 2,
   },
   item: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    minWidth: 90,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    minWidth: 92,
+    minHeight: 48,
+  },
+  itemPill: {
+    borderRadius: radius.pill,
+  },
+  itemBox: {
+    borderRadius: radius.md,
   },
   itemActive: {
+    borderWidth: 1.5,
     borderColor: colors.accent,
-    backgroundColor: colors.cardDeep,
+    backgroundColor: colors.accentSoft,
   },
   label: {
+    ...type.body,
     color: colors.textMuted,
-    fontSize: 16,
-    fontWeight: '700',
   },
   labelActive: {
     color: colors.accent,
+    fontWeight: '800',
   },
   sublabel: {
+    ...type.caption,
     color: colors.textFaint,
-    fontSize: 12,
     marginTop: 2,
   },
   sublabelActive: {

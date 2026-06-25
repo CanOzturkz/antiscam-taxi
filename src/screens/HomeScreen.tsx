@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { colors, radius } from '../theme';
+import { colors, radius, space, type, elevation } from '../theme';
 import Segmented, { type SegmentOption } from '../components/Segmented';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useCurrencyStore } from '../store/useCurrencyStore';
@@ -21,11 +22,13 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { cityId, taxiTypeId, setCity, setTaxiType } = useSettingsStore();
   const refreshRates = useCurrencyStore((s) => s.refresh);
 
   const [starting, setStarting] = useState(false);
   const [destination, setDestination] = useState('');
+  const [destFocused, setDestFocused] = useState(false);
   const [estimating, setEstimating] = useState(false);
   const [preRoute, setPreRoute] = useState<RouteResult | null>(null);
   const [preEstimate, setPreEstimate] = useState<FareEstimate | null>(null);
@@ -115,8 +118,14 @@ export default function HomeScreen() {
     }
   };
 
+  const startDisabled = starting;
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xxxl }]}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.brand}>🛡️ TaxiGuard</Text>
       <Text style={styles.subtitle}>Don't get scammed by taxis</Text>
 
@@ -134,11 +143,13 @@ export default function HomeScreen() {
       <Text style={styles.sectionLabel}>WHERE ARE YOU GOING?</Text>
       <View style={styles.destRow}>
         <TextInput
-          style={styles.destInput}
+          style={[styles.destInput, destFocused && styles.destInputFocused]}
           placeholder="e.g. Istiklal Street, Taksim"
           placeholderTextColor={colors.textFaint}
           value={destination}
           onChangeText={setDestination}
+          onFocus={() => setDestFocused(true)}
+          onBlur={() => setDestFocused(false)}
           returnKeyType="search"
           onSubmitEditing={estimateBeforeTrip}
         />
@@ -165,7 +176,7 @@ export default function HomeScreen() {
 
       {preEstimate && preRoute && (
         <View style={styles.preCard}>
-          <Text style={styles.preLabel}>EXPECTED FARE (before you ride)</Text>
+          <Text style={styles.preLabel}>EXPECTED FARE (BEFORE YOU RIDE)</Text>
           <Text style={styles.preRange}>
             ₺{Math.round(preEstimate.min)} – ₺{Math.round(preEstimate.max)}
           </Text>
@@ -185,7 +196,7 @@ export default function HomeScreen() {
       )}
 
       <TouchableOpacity
-        style={[styles.startBtn, starting && styles.btnDisabled]}
+        style={[styles.startBtn, startDisabled ? styles.startBtnDisabled : elevation.cta]}
         onPress={startTrip}
         disabled={starting}
         activeOpacity={0.85}
@@ -210,39 +221,78 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 40 },
-  brand: { fontSize: 34, fontWeight: '900', color: colors.accent, textAlign: 'center', marginTop: 16 },
-  subtitle: { fontSize: 16, color: colors.textMuted, textAlign: 'center', marginTop: 4, marginBottom: 24 },
+  content: { padding: space.xl },
+  brand: { ...type.hero, color: colors.accent, textAlign: 'center', marginTop: space.lg },
+  subtitle: { ...type.body, color: colors.textMuted, textAlign: 'center', marginTop: space.xs, marginBottom: space.xxl },
   sectionLabel: {
-    color: colors.textMuted, fontSize: 13, fontWeight: '700', letterSpacing: 1,
-    marginTop: 22, marginBottom: 10,
+    ...type.sectionLabel,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    marginTop: space.xxl - 6,
+    marginBottom: space.md - 2,
   },
   destRow: { flexDirection: 'row' },
   destInput: {
-    flex: 1, backgroundColor: colors.card, borderRadius: radius.md, paddingHorizontal: 16,
-    paddingVertical: 16, color: colors.text, fontSize: 17,
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.lg,
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '600',
   },
+  destInputFocused: { borderColor: colors.borderStrong },
   estimateBtn: {
-    marginTop: 12, borderRadius: radius.md, paddingVertical: 16, alignItems: 'center',
-    borderWidth: 2, borderColor: colors.accent, backgroundColor: colors.card,
+    marginTop: space.md,
+    borderRadius: radius.md,
+    paddingVertical: space.lg,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+    backgroundColor: colors.surface,
   },
-  estimateText: { color: colors.accent, fontSize: 17, fontWeight: '800' },
-  keyNote: { color: colors.textFaint, fontSize: 13, marginTop: 12, lineHeight: 19 },
-  btnDisabled: { opacity: 0.5 },
+  estimateText: { ...type.bodyStrong, color: colors.accent },
+  keyNote: { ...type.caption, color: colors.textFaint, marginTop: space.md, lineHeight: 19 },
+  btnDisabled: { opacity: 0.45 },
   preCard: {
-    backgroundColor: colors.cardDeep, borderRadius: radius.lg, padding: 20,
-    alignItems: 'center', marginTop: 16,
+    backgroundColor: colors.surfaceDeep,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    padding: space.xxl,
+    alignItems: 'center',
+    marginTop: space.lg,
+    ...elevation.raised,
   },
-  preLabel: { color: colors.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 1 },
-  preRange: { color: colors.accent, fontSize: 40, fontWeight: '900', marginVertical: 6 },
-  preMeta: { color: colors.text, fontSize: 14 },
-  preTraffic: { color: colors.warning, fontSize: 13, marginTop: 6 },
+  preLabel: { ...type.sectionLabel, color: colors.textMuted, textTransform: 'uppercase' },
+  preRange: { ...type.numericXL, color: colors.accent, marginVertical: space.sm, textAlign: 'center' },
+  preMeta: { ...type.caption, color: colors.textMuted },
+  preTraffic: { ...type.caption, color: colors.warning, marginTop: space.xs + 2 },
   startBtn: {
-    backgroundColor: colors.accent, borderRadius: radius.lg, paddingVertical: 22,
-    alignItems: 'center', marginTop: 24,
+    backgroundColor: colors.accent,
+    borderRadius: radius.lg,
+    paddingVertical: space.xl,
+    minHeight: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: space.xxl,
   },
-  startText: { color: colors.bg, fontSize: 22, fontWeight: '900', letterSpacing: 0.5 },
-  infoBox: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 18, marginTop: 28 },
-  infoTitle: { color: colors.accent, fontSize: 16, fontWeight: '700', marginBottom: 10 },
-  infoText: { color: colors.textMuted, fontSize: 15, marginBottom: 8, lineHeight: 21 },
+  startBtnDisabled: { opacity: 0.45 },
+  startText: { ...type.button, color: colors.bg, fontSize: 20 },
+  infoBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: space.xl,
+    marginTop: space.xxl,
+    ...elevation.card,
+  },
+  infoTitle: { ...type.bodyStrong, color: colors.accent, marginBottom: space.md - 2 },
+  infoText: { ...type.body, color: colors.textMuted, marginBottom: space.sm, lineHeight: 22 },
 });

@@ -3,11 +3,12 @@ import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { colors, radius } from '../theme';
+import { colors, radius, space, type, elevation } from '../theme';
 import Segmented, { type SegmentOption } from '../components/Segmented';
 import ScamAlert from '../components/ScamAlert';
 import { useFareStore } from '../store/useFareStore';
@@ -20,6 +21,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList, 'Result'>;
 
 export default function ResultScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const estimate = useFareStore((s) => s.estimate);
   const { selectedCurrency, setCurrency, rates, isLive } = useCurrencyStore();
 
@@ -41,7 +43,7 @@ export default function ResultScreen() {
     return (
       <View style={styles.center}>
         <Text style={styles.muted}>No trip data. Please start a trip first.</Text>
-        <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate('Home')}>
+        <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.navigate('Home')} activeOpacity={0.85}>
           <Text style={styles.homeText}>Back to Home</Text>
         </TouchableOpacity>
       </View>
@@ -82,7 +84,10 @@ export default function ResultScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xxxl }]}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Yasal taksimetre tahmini */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryLabel}>LEGAL METER ESTIMATE</Text>
@@ -113,7 +118,7 @@ export default function ResultScreen() {
             </View>
 
             <TouchableOpacity
-              style={[styles.checkBtn, !asked && styles.checkBtnDisabled]}
+              style={[styles.checkBtn, !asked ? styles.checkBtnDisabled : elevation.cta]}
               onPress={check}
               disabled={!asked}
               activeOpacity={0.85}
@@ -135,21 +140,64 @@ export default function ResultScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 40 },
-  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  muted: { color: colors.textMuted, fontSize: 16, marginBottom: 20, textAlign: 'center' },
-  summaryCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 20, alignItems: 'center', marginTop: 10, marginBottom: 20 },
-  summaryLabel: { color: colors.textMuted, fontSize: 13, fontWeight: '700', letterSpacing: 1 },
-  summaryRange: { color: colors.accent, fontSize: 38, fontWeight: '900', marginTop: 6 },
-  offline: { color: colors.warning, fontSize: 12, marginTop: 8 },
-  inputCard: { backgroundColor: colors.card, borderRadius: radius.lg, padding: 20, marginBottom: 20 },
-  inputLabel: { color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-  amountRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardDeep, borderRadius: radius.md, marginTop: 16, marginBottom: 16, paddingHorizontal: 16 },
-  amountSymbol: { color: colors.text, fontSize: 28, fontWeight: '800', marginRight: 8 },
-  input: { flex: 1, color: colors.text, fontSize: 32, fontWeight: '800', paddingVertical: 14 },
-  checkBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 18, alignItems: 'center' },
-  checkBtnDisabled: { backgroundColor: colors.textFaint },
-  checkText: { color: colors.bg, fontSize: 20, fontWeight: '900', letterSpacing: 1 },
-  homeBtn: { borderRadius: radius.md, paddingVertical: 16, alignItems: 'center', borderWidth: 1, borderColor: colors.accent },
-  homeText: { color: colors.accent, fontSize: 16, fontWeight: '700' },
+  content: { padding: space.xl },
+  center: { flex: 1, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', padding: space.xl },
+  muted: { ...type.body, color: colors.textMuted, marginBottom: space.xl, textAlign: 'center' },
+  summaryCard: {
+    backgroundColor: colors.surfaceDeep,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    padding: space.xxl,
+    alignItems: 'center',
+    marginTop: space.sm,
+    marginBottom: space.xl,
+    ...elevation.raised,
+  },
+  summaryLabel: { ...type.sectionLabel, color: colors.textMuted, textTransform: 'uppercase' },
+  summaryRange: { ...type.numericL, color: colors.accent, marginTop: space.sm },
+  offline: { ...type.caption, color: colors.warning, marginTop: space.sm },
+  inputCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: space.xl,
+    marginBottom: space.xl,
+    ...elevation.card,
+  },
+  inputLabel: { ...type.bodyStrong, color: colors.text, marginBottom: space.lg, textAlign: 'center' },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    marginTop: space.lg,
+    marginBottom: space.lg,
+    paddingHorizontal: space.lg + 2,
+  },
+  amountSymbol: { ...type.numericM, color: colors.textMuted, marginRight: space.sm },
+  input: { flex: 1, ...type.numericL, color: colors.text, paddingVertical: space.md + 2 },
+  checkBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.lg,
+    paddingVertical: space.xl,
+    minHeight: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkBtnDisabled: { backgroundColor: colors.surfaceAlt, opacity: 0.6 },
+  checkText: { ...type.button, color: colors.bg },
+  homeBtn: {
+    borderRadius: radius.md,
+    paddingVertical: space.lg,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.accent,
+  },
+  homeText: { ...type.bodyStrong, color: colors.accent },
 });

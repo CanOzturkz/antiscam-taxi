@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Constants from 'expo-constants';
-import { colors, radius } from '../theme';
+import { colors, radius, space, type, elevation } from '../theme';
 import type { LatLngPoint } from '../utils/polyline';
 
 // Expo Go'da react-native-maps native modülü yoktur → MapView render edilirse çöker.
@@ -81,8 +81,8 @@ export default function RouteMap({ origin, destination, routePoints = [], height
         showsMyLocationButton={false}
         toolbarEnabled={false}
       >
-        {origin && <Marker coordinate={origin} title="Start" pinColor="#2ecc71" />}
-        {destination && <Marker coordinate={destination} title="Destination" pinColor="#e74c3c" />}
+        {origin && <Marker coordinate={origin} title="Start" pinColor={colors.safe} />}
+        {destination && <Marker coordinate={destination} title="Destination" pinColor={colors.critical} />}
         {routePoints.length > 1 && (
           <Polyline coordinates={routePoints} strokeColor={colors.accent} strokeWidth={5} />
         )}
@@ -92,15 +92,26 @@ export default function RouteMap({ origin, destination, routePoints = [], height
 }
 
 const styles = StyleSheet.create({
-  wrap: { width: '100%', borderRadius: radius.lg, overflow: 'hidden', marginTop: 16 },
+  wrap: {
+    width: '100%',
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    marginTop: space.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...elevation.card,
+  },
   placeholder: {
     width: '100%',
     borderRadius: radius.lg,
-    backgroundColor: colors.bg,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 16,
+    marginTop: space.lg,
   },
   placeholderIcon: { fontSize: 36, marginBottom: 6 },
-  placeholderText: { color: colors.textMuted, fontSize: 13 },
+  placeholderText: { ...type.caption, color: colors.textMuted },
 });
