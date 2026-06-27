@@ -36,7 +36,11 @@ export default function Segmented({ options, selectedId, onSelect, scroll }: Pro
 
   if (scroll) {
     return (
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.row, styles.scrollContent]}
+      >
         {content}
       </ScrollView>
     );
@@ -48,6 +52,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: space.sm + 2,
+  },
+  // Yatay scroll'da içerik ekrana sığıyorsa ortala, taşarsa normal kaydır
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
   },
   item: {
     backgroundColor: colors.surface,
