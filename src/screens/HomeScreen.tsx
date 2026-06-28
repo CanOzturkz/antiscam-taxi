@@ -12,9 +12,10 @@ import Segmented, { type SegmentOption } from '../components/Segmented';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useCurrencyStore } from '../store/useCurrencyStore';
 import { useTripStore } from '../store/useTripStore';
-import { listCities, listTaxiTypes, getTaxiType } from '../config/tariffConfig';
+import { listCities, listTaxiTypes, getTaxiType, getTolls } from '../config/tariffConfig';
 import { hasApiKey, getRoute, type RouteResult } from '../services/googleDirections';
 import { estimateFareRange, type FareEstimate } from '../utils/fareCalculator';
+import { detectTolls, type TollDetection } from '../utils/tolls';
 import RouteMap from '../components/RouteMap';
 import { decodePolyline } from '../utils/polyline';
 
@@ -32,6 +33,7 @@ export default function HomeScreen() {
   const [estimating, setEstimating] = useState(false);
   const [preRoute, setPreRoute] = useState<RouteResult | null>(null);
   const [preEstimate, setPreEstimate] = useState<FareEstimate | null>(null);
+  const [preTolls, setPreTolls] = useState<TollDetection | null>(null);
 
   // Uygulama açılır açılmaz canlı döviz kurlarını çek
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function HomeScreen() {
     setEstimating(true);
     setPreRoute(null);
     setPreEstimate(null);
+    setPreTolls(null);
     try {
       const coords = await getCurrentCoords();
       if (!coords) return;
@@ -72,10 +75,14 @@ export default function HomeScreen() {
         destination.trim()
       );
 
+      // Rota köprü/tünel/otoyoldan geçiyorsa geçiş ücretini tespit et (havalimanı yanlış-alarmını önler)
+      const tolls = detectTolls(route.tollText, getTolls(cityId));
+
       const estimate = estimateFareRange({
         distanceKm: route.distanceKm,
         durationMin: route.durationInTrafficMin,
         waitingMin: route.estimatedWaitingMin,
+        tollsTotal: tolls.total,
         cityId,
         taxiTypeId,
       });
@@ -91,6 +98,7 @@ export default function HomeScreen() {
 
       setPreRoute(route);
       setPreEstimate(banded);
+      setPreTolls(tolls);
     } catch (e: any) {
       const code = e?.message;
       const msg = code === 'NO_API_KEY'
@@ -186,6 +194,11 @@ export default function HomeScreen() {
           {preRoute.estimatedWaitingMin > 1 && (
             <Text style={styles.preTraffic}>🚦 +{Math.round(preRoute.estimatedWaitingMin)} min traffic delay included</Text>
           )}
+          {preTolls && preTolls.total > 0 && (
+            <Text style={styles.preToll}>
+              🛣️ incl. tolls ₺{Math.round(preTolls.total)}{preTolls.approximate ? '≈' : ''} — {preTolls.matched.map((t) => t.label).join(', ')}
+            </Text>
+          )}
           <RouteMap
             origin={{ latitude: preRoute.startLocation.lat, longitude: preRoute.startLocation.lng }}
             destination={{ latitude: preRoute.endLocation.lat, longitude: preRoute.endLocation.lng }}
@@ -273,6 +286,7 @@ const styles = StyleSheet.create({
   preRange: { ...type.numericXL, color: colors.accent, marginVertical: space.sm, textAlign: 'center' },
   preMeta: { ...type.caption, color: colors.textMuted },
   preTraffic: { ...type.caption, color: colors.warning, marginTop: space.xs + 2 },
+  preToll: { ...type.caption, color: colors.textMuted, marginTop: space.xs + 2, textAlign: 'center', paddingHorizontal: space.md },
   startBtn: {
     backgroundColor: colors.accent,
     borderRadius: radius.lg,

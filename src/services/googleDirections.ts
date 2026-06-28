@@ -37,6 +37,8 @@ export interface RouteResult {
   endLocation: LatLng;
   /** Rota çizgisi için encoded polyline (haritada çizmek için) */
   polyline: string;
+  /** Geçiş ücreti tespiti için rota metni (özet + adım talimatları + adresler, küçük harf) */
+  tollText: string;
 }
 
 export class DirectionsError extends Error {}
@@ -80,6 +82,15 @@ export async function getRoute(
   const durationInTrafficMin = (leg.duration_in_traffic?.value ?? leg.duration.value) / 60;
   const estimatedWaitingMin = Math.max(0, durationInTrafficMin - durationMin);
 
+  // Geçiş ücreti tespiti için: rota özeti + adım talimatları + adresler
+  const stripHtml = (s: string) => (s || '').replace(/<[^>]*>/g, ' ');
+  const steps: string = (leg.steps ?? [])
+    .map((st: any) => stripHtml(st.html_instructions))
+    .join(' ');
+  const tollText = [route.summary, steps, leg.start_address, leg.end_address]
+    .join(' ')
+    .toLowerCase();
+
   return {
     distanceKm,
     durationMin,
@@ -90,6 +101,7 @@ export async function getRoute(
     startLocation: { lat: leg.start_location.lat, lng: leg.start_location.lng },
     endLocation: { lat: leg.end_location.lat, lng: leg.end_location.lng },
     polyline: route.overview_polyline?.points ?? '',
+    tollText,
   };
 }
 

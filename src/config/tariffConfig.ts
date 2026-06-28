@@ -31,6 +31,10 @@ export interface Toll {
   id: string;
   label: string;
   fee: number;
+  /** Rota metninde (özet + adım talimatları) eşleşince bu geçiş eklenir */
+  keywords?: string[];
+  /** Mesafe-bazlı (O-7 gibi) → fee yaklaşık değerdir */
+  approximate?: boolean;
   note?: string;
 }
 
@@ -42,6 +46,7 @@ export interface CityTariff {
   note?: string;
   defaultTaxiType: string;
   taxiTypes: Record<string, TaxiType>;
+  tollsSource?: string;
   tolls: Toll[];
 }
 
@@ -82,6 +87,10 @@ export function listCities(): { id: string; name: string }[] {
 export function listTaxiTypes(cityId?: string): { id: string; label: string }[] {
   const city = getCity(cityId);
   return Object.entries(city.taxiTypes).map(([id, t]) => ({ id, label: t.label }));
+}
+
+export function getTolls(cityId?: string): Toll[] {
+  return getCity(cityId).tolls ?? [];
 }
 
 /**
