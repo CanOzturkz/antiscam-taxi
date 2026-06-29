@@ -39,11 +39,11 @@
           "minimumFare": 210
         }
       },
-      "tollsSource": "2026 HGS tarifeleri (1 Ocak 2026 zammı dahil); O-7 mesafe-bazlı olduğundan yaklaşık değer",
+      "tollsSource": "2026 HGS tarifeleri (1 Ocak 2026 zammı dahil); O-7 mesafe-bazlı olduğundan yaklaşık değer. Boğaz köprüsü coğrafi (kıta) geçişle tespit edilir; O-7/Tünel yol adıyla.",
       "tolls": [
-        { "id": "bosphorus", "label": "Bosphorus Bridge (15 Temmuz / FSM)", "fee": 59, "keywords": ["15 temmuz", "sehitler", "şehitler", "fatih sultan mehmet", "fsm", "bosphorus", "bogazici", "boğaziçi", "o-1", "o-2"] },
-        { "id": "eurasia", "label": "Eurasia Tunnel", "fee": 280, "keywords": ["avrasya", "eurasia tunnel", "avrasya tuneli", "avrasya tüneli"] },
-        { "id": "northmarmara", "label": "Northern Marmara Motorway (O-7, incl. Y.S.S. Bridge)", "fee": 150, "approximate": true, "keywords": ["o-7", "o7", "kuzey marmara", "northern marmara", "yavuz sultan selim", "istanbul airport", "ist airport"] }
+        { "id": "bosphorus", "label": "Bosphorus Bridge crossing", "fee": 59, "keywords": [] },
+        { "id": "eurasia", "label": "Eurasia Tunnel", "fee": 280, "keywords": ["eurasia tunnel", "avrasya"] },
+        { "id": "northmarmara", "label": "Northern Marmara Motorway (O-7)", "fee": 150, "approximate": true, "keywords": ["o-7", "kuzey marmara", "northern marmara"] }
       ]
     },
     "ankara": {

@@ -27,3 +27,19 @@ export function detectTolls(routeText: string, tolls: Toll[]): TollDetection {
   const approximate = matched.some((t) => t.approximate === true);
   return { matched, total, approximate };
 }
+
+// Boğaziçi yaklaşık boylamı (Avrupa < bu < Asya), İstanbul enlem aralığında.
+// 29.01: Taksim/Sultanahmet/Eminönü (Avrupa, <29.01) ile Kadıköy/Üsküdar (Asya, >29.01) ayrımı.
+// Kıyıya çok yakın semtlerde (Ortaköy vb.) hata payı olabilir; kesin toll için Routes API gerekir.
+const BOSPHORUS_LNG = 29.01;
+const inIstanbulLat = (lat: number) => lat > 40.8 && lat < 41.4;
+
+/**
+ * İki nokta Boğaz'ın iki farklı yakasındaysa (kıta geçişi) true döner.
+ * Google talimatları köprüyü adıyla yazmadığı için (sadece O-1/O-2 der),
+ * köprü geçiş ücreti bu coğrafi testle tespit edilir.
+ */
+export function crossesBosphorus(aLat: number, aLng: number, bLat: number, bLng: number): boolean {
+  if (!inIstanbulLat(aLat) || !inIstanbulLat(bLat)) return false;
+  return aLng > BOSPHORUS_LNG !== bLng > BOSPHORUS_LNG;
+}

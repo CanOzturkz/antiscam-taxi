@@ -15,7 +15,7 @@ import { useTripStore } from '../store/useTripStore';
 import { listCities, listTaxiTypes, getTaxiType, getTolls } from '../config/tariffConfig';
 import { hasApiKey, getRoute, type RouteResult } from '../services/googleDirections';
 import { estimateFareRange, type FareEstimate } from '../utils/fareCalculator';
-import { detectTolls, type TollDetection } from '../utils/tolls';
+import { detectTolls, crossesBosphorus, type TollDetection } from '../utils/tolls';
 import RouteMap from '../components/RouteMap';
 import { decodePolyline } from '../utils/polyline';
 
@@ -76,7 +76,20 @@ export default function HomeScreen() {
       );
 
       // Rota köprü/tünel/otoyoldan geçiyorsa geçiş ücretini tespit et (havalimanı yanlış-alarmını önler)
-      const tolls = detectTolls(route.tollText, getTolls(cityId));
+      // O-7 / Avrasya Tüneli: yol adı keyword'üyle. Boğaz köprüsü: coğrafi kıta geçişiyle.
+      const cityTolls = getTolls(cityId);
+      const det = detectTolls(route.tollText, cityTolls);
+      const matched = [...det.matched];
+      let total = det.total;
+      const hasO7 = det.matched.some((m) => m.id === 'northmarmara');
+      const hasTunnel = det.matched.some((m) => m.id === 'eurasia');
+      // O-7 zaten Y.S.S. köprüsünü, tünel de geçişi içerir → coğrafi köprüyü tekrar ekleme
+      if (!hasO7 && !hasTunnel &&
+          crossesBosphorus(route.startLocation.lat, route.startLocation.lng, route.endLocation.lat, route.endLocation.lng)) {
+        const bridge = cityTolls.find((t) => t.id === 'bosphorus');
+        if (bridge) { matched.push(bridge); total += bridge.fee; }
+      }
+      const tolls: TollDetection = { matched, total, approximate: det.approximate };
 
       const estimate = estimateFareRange({
         distanceKm: route.distanceKm,
