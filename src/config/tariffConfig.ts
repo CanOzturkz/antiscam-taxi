@@ -43,6 +43,8 @@ export interface CityTariff {
   country: string;
   currency: string;
   singleTariff: boolean;
+  /** Tarife resmi kaynakla doğrulandı mı (false → UI'da uyarı göster) */
+  verified?: boolean;
   note?: string;
   defaultTaxiType: string;
   taxiTypes: Record<string, TaxiType>;

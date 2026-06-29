@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -7,6 +7,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import TripScreen from './src/screens/TripScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import { colors, type } from './src/theme';
+import { loadCachedConfig, refreshRemoteConfig } from './src/config/tariffConfig';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -17,6 +18,22 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
+  // Açılışta: önce önbellekteki (daha önce indirilmiş) tarifeyi yükle,
+  // sonra uzaktan güncel tarifeyi çek (varsa). Mağaza güncellemesi gerekmez.
+  const [, setConfigTick] = useState(0);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      await loadCachedConfig();
+      if (mounted) setConfigTick((n) => n + 1);
+      const updated = await refreshRemoteConfig();
+      if (mounted && updated) setConfigTick((n) => n + 1);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>

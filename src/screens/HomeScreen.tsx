@@ -12,7 +12,7 @@ import Segmented, { type SegmentOption } from '../components/Segmented';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useCurrencyStore } from '../store/useCurrencyStore';
 import { useTripStore } from '../store/useTripStore';
-import { listCities, listTaxiTypes, getTaxiType, getTolls } from '../config/tariffConfig';
+import { listCities, listTaxiTypes, getTaxiType, getTolls, getCity } from '../config/tariffConfig';
 import { hasApiKey, getRoute, type RouteResult } from '../services/googleDirections';
 import { estimateFareRange, type FareEstimate } from '../utils/fareCalculator';
 import { detectTolls, crossesBosphorus, type TollDetection } from '../utils/tolls';
@@ -47,6 +47,9 @@ export default function HomeScreen() {
     const tt = getTaxiType(cityId, t.id);
     return { id: t.id, label: t.label.replace(' Taksi', ''), sublabel: `₺${tt.opening} + ₺${tt.perKm}/km` };
   });
+
+  const city = getCity(cityId);
+  const cityVerified = city.verified !== false; // sadece açıkça false → uyarı
 
   const getCurrentCoords = async (): Promise<Location.LocationObjectCoords | null> => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -160,6 +163,14 @@ export default function HomeScreen() {
       <Text style={styles.sectionLabel}>TAXI TYPE</Text>
       <Segmented options={taxiOptions} selectedId={taxiTypeId} onSelect={setTaxiType} scroll />
 
+      {!cityVerified && (
+        <View style={styles.betaBanner}>
+          <Text style={styles.betaText}>
+            ⚠️ {city.name} fares are not officially verified yet (beta) — treat estimates as approximate.
+          </Text>
+        </View>
+      )}
+
       {/* Yola çıkmadan tahmin — Google Directions (anlık trafik) */}
       <Text style={styles.sectionLabel}>WHERE ARE YOU GOING?</Text>
       <View style={styles.destRow}>
@@ -257,6 +268,16 @@ const styles = StyleSheet.create({
     marginTop: space.xxl - 6,
     marginBottom: space.md - 2,
   },
+  betaBanner: {
+    marginTop: space.md,
+    backgroundColor: colors.warningBg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.warningBorder,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
+  betaText: { ...type.caption, color: colors.warning, lineHeight: 18 },
   destRow: { flexDirection: 'row' },
   destInput: {
     flex: 1,

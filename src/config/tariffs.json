@@ -4,7 +4,7 @@
   "source": "İBB UKOME - 16 Şubat 2026 tarifesi",
   "lastVerified": "2026-06-07",
   "defaultCity": "istanbul",
-  "remoteConfigUrl": "",
+  "remoteConfigUrl": "https://raw.githubusercontent.com/CanOzturkz/antiscam-taxi/main/src/config/tariffs.json",
   "fraudThresholds": { "safeMax": 1.10, "criticalMin": 1.40 },
   "cities": {
     "istanbul": {
@@ -12,6 +12,7 @@
       "country": "TR",
       "currency": "TRY",
       "singleTariff": true,
+      "verified": true,
       "note": "İstanbul'da 7/24 tek tarife uygulanır, gece/gündüz farkı yoktur.",
       "defaultTaxiType": "sari",
       "taxiTypes": {
@@ -52,6 +53,7 @@
       "country": "TR",
       "currency": "TRY",
       "singleTariff": true,
+      "verified": false,
       "note": "DEĞERLER DOĞRULANMALI - UKOME Ankara tarifesi ile güncellenecek",
       "defaultTaxiType": "standart",
       "taxiTypes": {
@@ -71,6 +73,7 @@
       "country": "TR",
       "currency": "TRY",
       "singleTariff": true,
+      "verified": false,
       "note": "DEĞERLER DOĞRULANMALI - UKOME İzmir tarifesi ile güncellenecek",
       "defaultTaxiType": "standart",
       "taxiTypes": {
