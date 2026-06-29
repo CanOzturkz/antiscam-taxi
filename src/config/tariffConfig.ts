@@ -50,6 +50,13 @@ export interface CityTariff {
   tolls: Toll[];
 }
 
+export interface FraudThresholds {
+  /** Bu oranın altı/eşiti SAFE (yuvarlama/bahşiş için küçük tampon) */
+  safeMax: number;
+  /** Bu oran ve üzeri CRITICAL; arası WARNING */
+  criticalMin: number;
+}
+
 export interface TariffConfig {
   schemaVersion: number;
   tariffVersion: string;
@@ -57,6 +64,7 @@ export interface TariffConfig {
   lastVerified: string;
   defaultCity: string;
   remoteConfigUrl: string;
+  fraudThresholds?: FraudThresholds;
   cities: Record<string, CityTariff>;
 }
 
@@ -91,6 +99,15 @@ export function listTaxiTypes(cityId?: string): { id: string; label: string }[] 
 
 export function getTolls(cityId?: string): Toll[] {
   return getCity(cityId).tolls ?? [];
+}
+
+/** Dolandırıcılık eşikleri (config'ten; yoksa güvenli varsayılan). */
+export function getFraudThresholds(): FraudThresholds {
+  const t = activeConfig.fraudThresholds;
+  return {
+    safeMax: t?.safeMax ?? 1.1,
+    criticalMin: t?.criticalMin ?? 1.4,
+  };
 }
 
 /**

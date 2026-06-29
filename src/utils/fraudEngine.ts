@@ -1,5 +1,6 @@
 import type { FareEstimate } from './fareCalculator';
 import { toTRY, type CurrencyCode } from './currency';
+import { getFraudThresholds } from '../config/tariffConfig';
 
 export type FraudLevel = 'SAFE' | 'WARNING' | 'CRITICAL';
 
@@ -24,21 +25,18 @@ export interface FraudInput {
   rates?: Record<string, number>;
 }
 
-// Eşikler — yasal tavanın (estimate.max) katları
-const TOLERANCE = 1.10;       // %10 oka kadar normal (yuvarlama, küçük geçişler)
-const CRITICAL_RATIO = 1.5;   // tavanın 1.5 katı ve üzeri = kritik dolandırıcılık
-
 /**
  * Dolandırıcılık Tespit Motoru.
  * Talep edilen tutarı (yerel ya da yabancı para) TRY'ye çevirir,
  * yasal taksimetre tavanıyla (estimate.max) karşılaştırır ve seviye belirler.
- *
- *   SAFE      : askedTRY <= max * 1.10
- *   WARNING   : max * 1.10 < askedTRY < max * 1.5
- *   CRITICAL  : askedTRY >= max * 1.5
+ * Eşikler config'ten gelir (getFraudThresholds): varsayılan
+ *   SAFE     : ratio <= safeMax (1.10)
+ *   WARNING  : safeMax < ratio < criticalMin
+ *   CRITICAL : ratio >= criticalMin (1.40)
  */
 export function assessFraud(input: FraudInput): FraudAssessment {
   const { estimate, askedAmount, askedCurrency, rates } = input;
+  const { safeMax, criticalMin } = getFraudThresholds();
 
   const askedTRY = toTRY(askedAmount, askedCurrency, rates);
   const ceiling = estimate.max;
@@ -47,9 +45,9 @@ export function assessFraud(input: FraudInput): FraudAssessment {
   const overchargePct = ceiling > 0 ? Math.max(0, (askedTRY / ceiling - 1) * 100) : 0;
 
   let level: FraudLevel;
-  if (ratio <= TOLERANCE) {
+  if (ratio <= safeMax) {
     level = 'SAFE';
-  } else if (ratio < CRITICAL_RATIO) {
+  } else if (ratio < criticalMin) {
     level = 'WARNING';
   } else {
     level = 'CRITICAL';

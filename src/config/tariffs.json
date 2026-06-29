@@ -5,6 +5,7 @@
   "lastVerified": "2026-06-07",
   "defaultCity": "istanbul",
   "remoteConfigUrl": "",
+  "fraudThresholds": { "safeMax": 1.10, "criticalMin": 1.40 },
   "cities": {
     "istanbul": {
       "name": "İstanbul",
