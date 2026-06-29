@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -25,6 +25,9 @@ export default function TripScreen() {
 
   const watchRef = useRef<Location.LocationSubscription | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const simRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const simPos = useRef<{ lat: number; lon: number } | null>(null);
+  const [simOn, setSimOn] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -50,8 +53,29 @@ export default function TripScreen() {
       mounted = false;
       watchRef.current?.remove();
       if (timerRef.current) clearInterval(timerRef.current);
+      if (simRef.current) clearInterval(simRef.current);
     };
   }, []);
+
+  // DEV-only: hareket etmeden canlı takibi test etmek için sahte GPS besler
+  const toggleSim = () => {
+    if (simRef.current) {
+      clearInterval(simRef.current);
+      simRef.current = null;
+      setSimOn(false);
+      return;
+    }
+    // Gerçek GPS'i durdur ki sahte konumla çakışmasın
+    watchRef.current?.remove();
+    const s = useTripStore.getState();
+    simPos.current = { lat: s.lastLat ?? 41.0082, lon: s.lastLon ?? 28.9784 };
+    simRef.current = setInterval(() => {
+      if (!simPos.current) return;
+      simPos.current = { lat: simPos.current.lat + 0.0006, lon: simPos.current.lon };
+      useTripStore.getState().onPosition(simPos.current.lat, simPos.current.lon, 15);
+    }, 1000);
+    setSimOn(true);
+  };
 
   const durationMin = durationSec / 60;
   const waitingMin = waitingSec / 60;
@@ -71,6 +95,7 @@ export default function TripScreen() {
         onPress: () => {
           watchRef.current?.remove();
           if (timerRef.current) clearInterval(timerRef.current);
+          if (simRef.current) clearInterval(simRef.current);
           useTripStore.getState().stop();
           useFareStore.getState().setEstimate(estimate);
           navigation.navigate('Result');
@@ -105,6 +130,12 @@ export default function TripScreen() {
       <TouchableOpacity style={styles.endBtn} onPress={endTrip} activeOpacity={0.85}>
         <Text style={styles.endText}>■  END TRIP</Text>
       </TouchableOpacity>
+
+      {__DEV__ && (
+        <TouchableOpacity style={styles.simBtn} onPress={toggleSim} activeOpacity={0.85}>
+          <Text style={styles.simText}>{simOn ? '⏸  Stop simulation' : '🧪  Simulate movement (DEV)'}</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -184,4 +215,14 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   endText: { ...type.button, color: colors.text, fontSize: 20 },
+  simBtn: {
+    marginTop: space.lg,
+    borderRadius: radius.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  simText: { ...type.caption, color: colors.textMuted },
 });
