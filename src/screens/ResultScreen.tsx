@@ -14,6 +14,7 @@ import ScamAlert from '../components/ScamAlert';
 import { useFareStore } from '../store/useFareStore';
 import { useCurrencyStore } from '../store/useCurrencyStore';
 import { useTripStore } from '../store/useTripStore';
+import { useHistoryStore } from '../store/useHistoryStore';
 import { assessFraud, type FraudAssessment } from '../utils/fraudEngine';
 import { SUPPORTED_CURRENCIES, CURRENCY_META, type CurrencyCode } from '../utils/currency';
 
@@ -59,14 +60,24 @@ export default function ResultScreen() {
   const check = () => {
     const amount = parseFloat(asked.replace(',', '.'));
     if (isNaN(amount) || amount <= 0) return;
-    setAssessment(
-      assessFraud({
-        estimate,
-        askedAmount: amount,
-        askedCurrency: selectedCurrency,
-        rates: rates ?? undefined,
-      })
-    );
+    const result = assessFraud({
+      estimate,
+      askedAmount: amount,
+      askedCurrency: selectedCurrency,
+      rates: rates ?? undefined,
+    });
+    setAssessment(result);
+    // Geçmiş kaydını verdiktle güncelle
+    const id = useFareStore.getState().historyId;
+    if (id) {
+      useHistoryStore.getState().updateTrip(id, {
+        currency: selectedCurrency,
+        askedDisplay: `${CURRENCY_META[selectedCurrency].symbol}${amount}`,
+        askedTRY: result.askedTRY,
+        overchargeTRY: result.overchargeTRY,
+        level: result.level,
+      });
+    }
   };
 
   const reset = () => {

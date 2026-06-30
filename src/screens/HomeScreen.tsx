@@ -153,6 +153,10 @@ export default function HomeScreen() {
       <Text style={styles.brand}>🛡️ TaxiGuard</Text>
       <Text style={styles.subtitle}>Don't get scammed by taxis</Text>
 
+      <TouchableOpacity style={styles.historyLink} onPress={() => navigation.navigate('History')} activeOpacity={0.7}>
+        <Text style={styles.historyLinkText}>🕘  Trip history</Text>
+      </TouchableOpacity>
+
       {cityOptions.length > 1 && (
         <>
           <Text style={styles.sectionLabel}>CITY</Text>
@@ -260,7 +264,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: space.xl },
   brand: { ...type.hero, color: colors.accent, textAlign: 'center', marginTop: space.lg },
-  subtitle: { ...type.body, color: colors.textMuted, textAlign: 'center', marginTop: space.xs, marginBottom: space.xxl },
+  subtitle: { ...type.body, color: colors.textMuted, textAlign: 'center', marginTop: space.xs },
+  historyLink: { alignSelf: 'center', marginTop: space.md, marginBottom: space.lg, paddingVertical: space.xs, paddingHorizontal: space.md },
+  historyLinkText: { ...type.caption, color: colors.accent, fontWeight: '700' },
   sectionLabel: {
     ...type.sectionLabel,
     color: colors.textMuted,

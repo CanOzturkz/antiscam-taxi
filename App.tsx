@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './src/screens/HomeScreen';
 import TripScreen from './src/screens/TripScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import { colors, type } from './src/theme';
 import { loadCachedConfig, refreshRemoteConfig } from './src/config/tariffConfig';
 
@@ -13,6 +14,7 @@ export type RootStackParamList = {
   Home: undefined;
   Trip: undefined;
   Result: undefined;
+  History: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -51,6 +53,7 @@ export default function App() {
           <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'TaxiGuard' }} />
           <Stack.Screen name="Trip" component={TripScreen} options={{ title: 'Trip', headerBackVisible: false }} />
           <Stack.Screen name="Result" component={ResultScreen} options={{ title: 'Result', headerBackVisible: false }} />
+          <Stack.Screen name="History" component={HistoryScreen} options={{ title: 'Trip History' }} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

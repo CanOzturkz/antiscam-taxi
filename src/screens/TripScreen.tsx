@@ -9,6 +9,7 @@ import { colors, radius, space, type, elevation } from '../theme';
 import { useTripStore } from '../store/useTripStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useFareStore } from '../store/useFareStore';
+import { useHistoryStore } from '../store/useHistoryStore';
 import { estimateFareRange } from '../utils/fareCalculator';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Trip'>;
@@ -98,6 +99,14 @@ export default function TripScreen() {
           if (simRef.current) clearInterval(simRef.current);
           useTripStore.getState().stop();
           useFareStore.getState().setEstimate(estimate);
+          // Yolculuğu geçmişe kaydet; CHECK yapılırsa Result ekranı bu kaydı günceller
+          const historyId = useHistoryStore.getState().addTrip({
+            distanceKm: parseFloat(distanceKm.toFixed(2)),
+            durationMin: parseFloat(durationMin.toFixed(1)),
+            estimateMin: estimate.min,
+            estimateMax: estimate.max,
+          });
+          useFareStore.getState().setHistoryId(historyId);
           navigation.navigate('Result');
         },
       },
